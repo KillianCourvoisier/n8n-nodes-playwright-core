@@ -1,11 +1,9 @@
-import { INodeType, INodeExecutionData, IExecuteFunctions,INodeTypeDescription, NodeConnectionType, INodeInputConfiguration, INodeOutputConfiguration } from 'n8n-workflow';
-import { join } from 'path';
+import { INodeType,INodeExecutionData,IExecuteFunctions,INodeTypeDescription,NodeOperationError,} from 'n8n-workflow';
 import { platform } from 'os';
-import { getBrowserExecutablePath } from './utils';
+import { existsSync } from 'fs';
 import { handleOperation } from './operations';
 import { runCustomScript } from './customScript';
 import { IBrowserOptions } from './types';
-import { installBrowser } from '../scripts/setup-browsers';
 import { BrowserType } from './config';
 
 export class Playwright implements INodeType {
@@ -20,18 +18,8 @@ export class Playwright implements INodeType {
     defaults: {
         name: 'Playwright',
     },
-    inputs: [
-        {
-            displayName: 'Input',
-            type: NodeConnectionType.Main,
-        } as INodeInputConfiguration,
-    ],
-    outputs: [
-        {
-            displayName: 'Output',
-            type: NodeConnectionType.Main,
-        } as INodeOutputConfiguration,
-    ],
+    inputs: ['main'],
+    outputs: ['main'],
 
     properties: [
         {
@@ -68,7 +56,7 @@ export class Playwright implements INodeType {
                     name: 'Run Custom Script',
                     value: 'runCustomScript',
                     description: 'Execute custom JavaScript code with full Playwright API access',
-                    action: 'Run custom JavaScript code',
+                    action: 'Run custom java script code',
                 },
                 {
                     name: 'Take Screenshot',
@@ -95,7 +83,6 @@ export class Playwright implements INodeType {
             required: true,
         },
 
-        // Custom Script Code
         {
             displayName: 'Script Code',
             name: 'scriptCode',
@@ -164,7 +151,6 @@ return [{
             },
         },
         
-        // Selector Type
         {
             displayName: 'Selector Type',
             name: 'selectorType',
@@ -178,7 +164,7 @@ return [{
                 {
                     name: 'XPath',
                     value: 'xpath',
-                    description: 'Use XPath expression (e.g., //button[@id="submit"])',
+                    description: 'Use XPath expression (e.g., //button[@ID="submit"])',
                 }
             ],
             default: 'css',
@@ -190,14 +176,13 @@ return [{
             },
         },
         
-        // CSS Selector field
         {
             displayName: 'CSS Selector',
             name: 'selector',
             type: 'string',
             default: '',
             placeholder: '#submit-button',
-            description: 'CSS selector for the element (e.g., #id, .class, button[type="submit"])',
+            description: 'CSS selector for the element (e.g., #ID, .class, button[type="submit"])',
             displayOptions: {
                 show: {
                     operation: ['getText', 'clickElement', 'fillForm'],
@@ -207,13 +192,12 @@ return [{
             required: true,
         },
         
-        // XPath field
         {
             displayName: 'XPath',
             name: 'xpath',
             type: 'string',
             default: '',
-            placeholder: '//button[@id="submit"]',
+            placeholder: '//button[@ID="submit"]',
             description: 'XPath expression for the element (e.g., //div[@class="content"], //button[text()="Click Me"])',
             displayOptions: {
                 show: {
@@ -256,6 +240,15 @@ return [{
                 },
             ],
             default: 'chromium',
+        },
+        {
+            displayName: 'Executable Path',
+            name: 'executablePath',
+            type: 'string',
+            default: '',
+            placeholder: '/usr/bin/chromium',
+            required: true,
+            description: 'Absolute path to the installed browser executable on the host system',
         },
         {
             displayName: 'Browser Launch Options',
@@ -319,19 +312,17 @@ return [{
             const operation = this.getNodeParameter('operation', i) as string;
             const browserType = this.getNodeParameter('browser', i) as BrowserType;
             const browserOptions = this.getNodeParameter('browserOptions', i) as IBrowserOptions;
+            const executablePath = this.getNodeParameter('executablePath', i) as string;
 
             try {
-                const playwright = require('playwright');
-                const browsersPath = join(__dirname, '..', 'browsers');
+                const playwright = require('playwright-core');
 
-                // Get browser executable path
-                let executablePath;
-                try {
-                    executablePath = getBrowserExecutablePath(browserType, browsersPath);
-                } catch (error) {
-                    console.error(`Browser path error: ${error.message}`);
-                    await installBrowser(browserType);
-                    executablePath = getBrowserExecutablePath(browserType, browsersPath);
+                if (!executablePath || !existsSync(executablePath)) {
+                    throw new NodeOperationError(
+                        this.getNode(),
+                        `Browser executable not found: ${executablePath}`,
+                        { itemIndex: i },
+                    );
                 }
 
                 console.log(`Launching browser from: ${executablePath}`);
@@ -348,13 +339,11 @@ return [{
                 let result;
 
                 if (operation === 'runCustomScript') {
-                    // Custom script doesn't need URL navigation beforehand
                     console.log(`Processing ${i + 1} of ${items.length}: [runCustomScript] Custom Script`);
                     result = await runCustomScript(this, i, browser, page, playwright);
                     await browser.close();
                     returnData.push(...result);
                 } else {
-                    // Standard operations need URL navigation
                     const url = this.getNodeParameter('url', i) as string;
                     await page.goto(url);
 

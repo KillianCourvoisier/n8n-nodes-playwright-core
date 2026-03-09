@@ -1,5 +1,5 @@
 import { IExecuteFunctions } from 'n8n-workflow';
-import { Page } from 'playwright';
+import { Page } from 'playwright-core';
 
 export async function handleOperation(
     operation: string,
