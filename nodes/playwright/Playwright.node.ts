@@ -3,8 +3,7 @@ import { platform } from 'os';
 import { existsSync } from 'fs';
 import { handleOperation } from './operations';
 import { runCustomScript } from './customScript';
-import { IBrowserOptions } from './types';
-import { BrowserType } from './config';
+import { IBrowserOptions, BrowserType } from './types';
 
 export class Playwright implements INodeType {
     description : INodeTypeDescription = {
