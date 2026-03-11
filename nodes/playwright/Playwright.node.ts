@@ -1,97 +1,101 @@
-import { INodeType,INodeExecutionData,IExecuteFunctions,INodeTypeDescription,NodeOperationError,} from 'n8n-workflow';
-import { platform } from 'os';
-import { existsSync } from 'fs';
+import {
+    INodeType,
+    INodeExecutionData,
+    IExecuteFunctions,
+    INodeTypeDescription,
+    NodeOperationError,
+} from 'n8n-workflow';
 import { handleOperation } from './operations';
 import { runCustomScript } from './customScript';
-import { IBrowserOptions, BrowserType } from './types';
+import { IBrowserOptions } from './types';
 
 export class Playwright implements INodeType {
-    description : INodeTypeDescription = {
-    displayName: 'Playwright',
-    name: 'playwright',
-    icon: 'file:playwright.svg',
-    group: ['automation'],
-    version: 1,
-    subtitle: '={{$parameter["operation"]}}',
-    description: 'Automate browser actions using Playwright',
-    defaults: {
-        name: 'Playwright',
-    },
-    inputs: ['main'],
-    outputs: ['main'],
-
-    properties: [
-        {
-            displayName: 'Operation',
-            name: 'operation',
-            type: 'options',
-            noDataExpression: true,
-            options: [
-                {
-                    name: 'Click Element',
-                    value: 'clickElement',
-                    description: 'Click on an element',
-                    action: 'Click on an element',
-                },
-                {
-                    name: 'Fill Form',
-                    value: 'fillForm',
-                    description: 'Fill a form field',
-                    action: 'Fill a form field',
-                },
-                {
-                    name: 'Get Text',
-                    value: 'getText',
-                    description: 'Get text from an element',
-                    action: 'Get text from an element',
-                },
-                {
-                    name: 'Navigate',
-                    value: 'navigate',
-                    description: 'Navigate to a URL',
-                    action: 'Navigate to a URL',
-                },
-                {
-                    name: 'Run Custom Script',
-                    value: 'runCustomScript',
-                    description: 'Execute custom JavaScript code with full Playwright API access',
-                    action: 'Run custom java script code',
-                },
-                {
-                    name: 'Take Screenshot',
-                    value: 'takeScreenshot',
-                    description: 'Take a screenshot of a webpage',
-                    action: 'Take a screenshot of a webpage',
-                }
-            ],
-            default: 'navigate',
+    description: INodeTypeDescription = {
+        displayName: 'Playwright',
+        name: 'playwright',
+        icon: 'file:playwright.svg',
+        group: ['automation'],
+        version: 1,
+        subtitle: '={{$parameter["operation"]}}',
+        description: 'Automate browser actions using Playwright',
+        defaults: {
+            name: 'Playwright',
         },
+        inputs: ['main'],
+        outputs: ['main'],
 
-        {
-            displayName: 'URL',
-            name: 'url',
-            type: 'string',
-            default: '',
-            placeholder: 'https://example.com',
-            description: 'The URL to navigate to',
-            displayOptions: {
-                show: {
-                    operation: ['navigate', 'takeScreenshot', 'getText', 'clickElement', 'fillForm'],
+        properties: [
+            {
+                displayName: 'Operation',
+                name: 'operation',
+                type: 'options',
+                noDataExpression: true,
+                options: [
+                    {
+                        name: 'Click Element',
+                        value: 'clickElement',
+                        description: 'Click on an element',
+                        action: 'Click on an element',
+                    },
+                    {
+                        name: 'Fill Form',
+                        value: 'fillForm',
+                        description: 'Fill a form field',
+                        action: 'Fill a form field',
+                    },
+                    {
+                        name: 'Get Text',
+                        value: 'getText',
+                        description: 'Get text from an element',
+                        action: 'Get text from an element',
+                    },
+                    {
+                        name: 'Navigate',
+                        value: 'navigate',
+                        description: 'Navigate to a URL',
+                        action: 'Navigate to a URL',
+                    },
+                    {
+                        name: 'Run Custom Script',
+                        value: 'runCustomScript',
+                        description: 'Execute custom JavaScript code with full Playwright API access',
+                        action: 'Run custom java script code',
+                    },
+                    {
+                        name: 'Take Screenshot',
+                        value: 'takeScreenshot',
+                        description: 'Take a screenshot of a webpage',
+                        action: 'Take a screenshot of a webpage',
+                    },
+                ],
+                default: 'navigate',
+            },
+
+            {
+                displayName: 'URL',
+                name: 'url',
+                type: 'string',
+                default: '',
+                placeholder: 'https://example.com',
+                description: 'The URL to navigate to',
+                displayOptions: {
+                    show: {
+                        operation: ['navigate', 'takeScreenshot', 'getText', 'clickElement', 'fillForm'],
+                    },
                 },
+                required: true,
             },
-            required: true,
-        },
 
-        {
-            displayName: 'Script Code',
-            name: 'scriptCode',
-            type: 'string',
-            typeOptions: {
-                editor: 'codeNodeEditor',
-                editorLanguage: 'javaScript',
-            },
-            required: true,
-            default: `// Navigate to a URL
+            {
+                displayName: 'Script Code',
+                name: 'scriptCode',
+                type: 'string',
+                typeOptions: {
+                    editor: 'codeNodeEditor',
+                    editorLanguage: 'javaScript',
+                },
+                required: true,
+                default: `// Navigate to a URL
 await $page.goto('https://example.com');
 
 // Get page title
@@ -115,193 +119,172 @@ return [{
         )
     }
 }];`,
-            description: 'JavaScript code to execute with Playwright. Access $page, $browser, $playwright, and all n8n Code node variables.',
-            noDataExpression: true,
-            displayOptions: {
-                show: {
-                    operation: ['runCustomScript'],
+                description:
+                    'JavaScript code to execute with Playwright. Access $page, $browser, $playwright, and all n8n Code node variables.',
+                noDataExpression: true,
+                displayOptions: {
+                    show: {
+                        operation: ['runCustomScript'],
+                    },
                 },
             },
-        },
 
-        {
-            displayName: 'Use <code>$page</code>, <code>$browser</code>, or <code>$playwright</code> to access Playwright. <a target="_blank" href="https://docs.n8n.io/code-examples/methods-variables-reference/">Special vars/methods</a> are available. <br><br>Debug by using <code>console.log()</code> statements and viewing their output in the browser console.',
-            name: 'notice',
-            type: 'notice',
-            displayOptions: {
-                show: {
-                    operation: ['runCustomScript'],
+            {
+                displayName:
+                    'Use <code>$page</code>, <code>$browser</code>, or <code>$playwright</code> to access Playwright. <a target="_blank" href="https://docs.n8n.io/code-examples/methods-variables-reference/">Special vars/methods</a> are available. <br><br>Debug by using <code>console.log()</code> statements and viewing their output in the browser console.',
+                name: 'notice',
+                type: 'notice',
+                displayOptions: {
+                    show: {
+                        operation: ['runCustomScript'],
+                    },
                 },
+                default: '',
             },
-            default: '',
-        },
 
-        {
-            displayName: 'Property Name',
-            name: 'dataPropertyName',
-            type: 'string',
-            required: true,
-            default: 'screenshot',
-            description: 'Name of the binary property in which to store the screenshot data',
-            displayOptions: {
-                show: {
-                    operation: ['takeScreenshot'],
+            {
+                displayName: 'Property Name',
+                name: 'dataPropertyName',
+                type: 'string',
+                required: true,
+                default: 'screenshot',
+                description: 'Name of the binary property in which to store the screenshot data',
+                displayOptions: {
+                    show: {
+                        operation: ['takeScreenshot'],
+                    },
                 },
             },
-        },
-        
-        {
-            displayName: 'Selector Type',
-            name: 'selectorType',
-            type: 'options',
-            options: [
-                {
-                    name: 'CSS Selector',
-                    value: 'css',
-                    description: 'Use CSS selector (e.g., #submit-button, .my-class)',
-                },
-                {
-                    name: 'XPath',
-                    value: 'xpath',
-                    description: 'Use XPath expression (e.g., //button[@ID="submit"])',
-                }
-            ],
-            default: 'css',
-            description: 'Choose between CSS selector or XPath',
-            displayOptions: {
-                show: {
-                    operation: ['getText', 'clickElement', 'fillForm'],
-                },
-            },
-        },
-        
-        {
-            displayName: 'CSS Selector',
-            name: 'selector',
-            type: 'string',
-            default: '',
-            placeholder: '#submit-button',
-            description: 'CSS selector for the element (e.g., #ID, .class, button[type="submit"])',
-            displayOptions: {
-                show: {
-                    operation: ['getText', 'clickElement', 'fillForm'],
-                    selectorType: ['css'],
+
+            {
+                displayName: 'Selector Type',
+                name: 'selectorType',
+                type: 'options',
+                options: [
+                    {
+                        name: 'CSS Selector',
+                        value: 'css',
+                        description: 'Use CSS selector (e.g., #submit-button, .my-class)',
+                    },
+                    {
+                        name: 'XPath',
+                        value: 'xpath',
+                        description: 'Use XPath expression (e.g., //button[@ID="submit"])',
+                    },
+                ],
+                default: 'css',
+                description: 'Choose between CSS selector or XPath',
+                displayOptions: {
+                    show: {
+                        operation: ['getText', 'clickElement', 'fillForm'],
+                    },
                 },
             },
-            required: true,
-        },
-        
-        {
-            displayName: 'XPath',
-            name: 'xpath',
-            type: 'string',
-            default: '',
-            placeholder: '//button[@ID="submit"]',
-            description: 'XPath expression for the element (e.g., //div[@class="content"], //button[text()="Click Me"])',
-            displayOptions: {
-                show: {
-                    operation: ['getText', 'clickElement', 'fillForm'],
-                    selectorType: ['xpath'],
+
+            {
+                displayName: 'CSS Selector',
+                name: 'selector',
+                type: 'string',
+                default: '',
+                placeholder: '#submit-button',
+                description: 'CSS selector for the element (e.g., #ID, .class, button[type="submit"])',
+                displayOptions: {
+                    show: {
+                        operation: ['getText', 'clickElement', 'fillForm'],
+                        selectorType: ['css'],
+                    },
                 },
+                required: true,
             },
-            required: true,
-        },
-        
-        {
-            displayName: 'Value',
-            name: 'value',
-            type: 'string',
-            default: '',
-            description: 'Value to fill in the form field',
-            displayOptions: {
-                show: {
-                    operation: ['fillForm'],
+
+            {
+                displayName: 'XPath',
+                name: 'xpath',
+                type: 'string',
+                default: '',
+                placeholder: '//button[@ID="submit"]',
+                description:
+                    'XPath expression for the element (e.g., //div[@class="content"], //button[text()="Click Me"])',
+                displayOptions: {
+                    show: {
+                        operation: ['getText', 'clickElement', 'fillForm'],
+                        selectorType: ['xpath'],
+                    },
                 },
+                required: true,
             },
-            required: true,
-        },
-        {
-            displayName: 'Browser',
-            name: 'browser',
-            type: 'options',
-            options: [
-                {
-                    name: 'Chromium',
-                    value: 'chromium',
+
+            {
+                displayName: 'Value',
+                name: 'value',
+                type: 'string',
+                default: '',
+                description: 'Value to fill in the form field',
+                displayOptions: {
+                    show: {
+                        operation: ['fillForm'],
+                    },
                 },
-                {
-                    name: 'Firefox',
-                    value: 'firefox',
-                },
-                {
-                    name: 'Webkit',
-                    value: 'webkit',
-                },
-            ],
-            default: 'chromium',
-        },
-        {
-            displayName: 'Executable Path',
-            name: 'executablePath',
-            type: 'string',
-            default: '',
-            placeholder: '/usr/bin/chromium',
-            required: true,
-            description: 'Absolute path to the installed browser executable on the host system',
-        },
-        {
-            displayName: 'Browser Launch Options',
-            name: 'browserOptions',
-            type: 'collection',
-            placeholder: 'Add Option',
-            default: {},
-            options: [
-                {
-                    displayName: 'Headless',
-                    name: 'headless',
-                    type: 'boolean',
-                    default: true,
-                    description: 'Whether to run browser in headless mode',
-                },
-                {
-                    displayName: 'Slow Motion',
-                    name: 'slowMo',
-                    type: 'number',
-                    default: 0,
-                    description: 'Slows down operations by the specified amount of milliseconds',
-                }
-            ],
-        },
-        {
-            displayName: 'Screenshot Options',
-            name: 'screenshotOptions',
-            type: 'collection',
-            placeholder: 'Add Option',
-            default: {},
-            displayOptions: {
-                show: {
-                    operation: ['takeScreenshot'],
-                },
+                required: true,
             },
-            options: [
-                {
-                    displayName: 'Full Page',
-                    name: 'fullPage',
-                    type: 'boolean',
-                    default: false,
-                    description: 'Whether to take a screenshot of the full scrollable page',
+
+            {
+                displayName: 'Browserless Endpoint',
+                name: 'browserlessEndpoint',
+                type: 'string',
+                default: 'http://browserless:3000?token=test-token',
+                placeholder: 'http://browserless:3000?token=test-token',
+                required: true,
+                description: 'Browserless CDP endpoint',
+            },
+
+            {
+                displayName: 'Browser Connection Options',
+                name: 'browserOptions',
+                type: 'collection',
+                placeholder: 'Add Option',
+                default: {},
+                options: [
+                    {
+                        displayName: 'Timeout',
+                        name: 'timeout',
+                        type: 'number',
+                        default: 30000,
+                        description: 'Connection timeout in milliseconds',
+                    },
+                ],
+            },
+
+            {
+                displayName: 'Screenshot Options',
+                name: 'screenshotOptions',
+                type: 'collection',
+                placeholder: 'Add Option',
+                default: {},
+                displayOptions: {
+                    show: {
+                        operation: ['takeScreenshot'],
+                    },
                 },
-                {
-                    displayName: 'Path',
-                    name: 'path',
-                    type: 'string',
-                    default: '',
-                    description: 'The file path to save the screenshot to',
-                },
-            ],
-        },
-    ],
-};
+                options: [
+                    {
+                        displayName: 'Full Page',
+                        name: 'fullPage',
+                        type: 'boolean',
+                        default: false,
+                        description: 'Whether to take a screenshot of the full scrollable page',
+                    },
+                    {
+                        displayName: 'Path',
+                        name: 'path',
+                        type: 'string',
+                        default: '',
+                        description: 'The file path to save the screenshot to',
+                    },
+                ],
+            },
+        ],
+    };
 
     async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
         const items = this.getInputData();
@@ -309,30 +292,27 @@ return [{
 
         for (let i = 0; i < items.length; i++) {
             const operation = this.getNodeParameter('operation', i) as string;
-            const browserType = this.getNodeParameter('browser', i) as BrowserType;
+            const browserlessEndpoint = this.getNodeParameter('browserlessEndpoint', i) as string;
             const browserOptions = this.getNodeParameter('browserOptions', i) as IBrowserOptions;
-            const executablePath = this.getNodeParameter('executablePath', i) as string;
 
             try {
                 const playwright = require('playwright-core');
 
-                if (!executablePath || !existsSync(executablePath)) {
+                if (!browserlessEndpoint) {
                     throw new NodeOperationError(
                         this.getNode(),
-                        `Browser executable not found: ${executablePath}`,
+                        'Browserless endpoint is required',
                         { itemIndex: i },
                     );
                 }
 
-                console.log(`Launching browser from: ${executablePath}`);
+                console.log(`Connecting to Browserless via CDP: ${browserlessEndpoint}`);
 
-                const browser = await playwright[browserType].launch({
-                    headless: browserOptions.headless !== false,
-                    slowMo: browserOptions.slowMo || 0,
-                    executablePath,
+                const browser = await playwright.chromium.connectOverCDP(browserlessEndpoint, {
+                    timeout: browserOptions.timeout || 30000,
                 });
 
-                const context = await browser.newContext();
+                const context = browser.contexts()[0] || (await browser.newContext());
                 const page = await context.newPage();
 
                 let result;
@@ -350,18 +330,19 @@ return [{
                     await browser.close();
                     returnData.push(result);
                 }
-            } catch (error) {
-                console.error(`Browser launch error:`, error);
+            } catch (error: any) {
+                console.error('Browser connection error:', error);
+
                 if (this.continueOnFail()) {
                     returnData.push({
                         json: {
                             error: error.message,
-                            browserType,
-                            os: platform(),
+                            endpoint: browserlessEndpoint,
                         },
                     });
                     continue;
                 }
+
                 throw error;
             }
         }

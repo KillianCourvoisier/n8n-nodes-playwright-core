@@ -1,8 +1,5 @@
-export type BrowserType = 'chromium' | 'firefox' | 'webkit';
-
 export interface IBrowserOptions {
-    headless?: boolean;
-    slowMo?: number;
+    timeout?: number;
 }
 
 export interface IScreenshotOptions {

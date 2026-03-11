@@ -1,15 +1,38 @@
-version: '3.8'
-
 services:
   n8n:
-    build: .
-    container_name: n8n
+    build:
+      context: .
+      dockerfile: dockerfile
+    container_name: n8n-playwright-core
     ports:
       - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=false
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_EDITOR_BASE_URL=http://localhost:5678
+      - N8N_LOG_LEVEL=debug
+      - N8N_LOG_OUTPUT=console
+      - N8N_COMMUNITY_PACKAGES_ENABLED=true
+      - N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE=true
+      - N8N_CUSTOM_EXTENSIONS=/opt/custom-nodes
     volumes:
-      - n8n_data:/home/node/.n8n
+      - ./n8n_data:/home/node/.n8n
+      - ./n8n_cache:/home/node/.cache
+    depends_on:
+      - browserless
     restart: unless-stopped
 
-volumes:
-  n8n_data:
-    name: n8n_data
+  browserless:
+    image: ghcr.io/browserless/chromium:latest
+    container_name: browserless-playwright-core
+    ports:
+      - "3000:3000"
+    environment:
+      - HOST=browserless
+      - PORT=3000
+      - TOKEN=
+      - CONCURRENT=4
+      - QUEUED=10
+      - TIMEOUT=300000
+    restart: unless-stopped

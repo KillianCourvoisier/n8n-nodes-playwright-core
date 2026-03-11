@@ -13,3 +13,5 @@ nodes/browsers/*
 *.tgz
 .devcontainer
 ai_files
+n8n_data/
+n8n_cache/
