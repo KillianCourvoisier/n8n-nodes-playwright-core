@@ -8,6 +8,11 @@ import {
 import { handleOperation } from './operations';
 import { runCustomScript } from './customScript';
 import { IBrowserOptions } from './types';
+import { closeSession, getOrCreateSession, getSessionKey } from './sessionStore';
+
+type ExecutionFunctionsWithExecutionId = IExecuteFunctions & {
+    getExecutionId?: () => string;
+};
 
 export class Playwright implements INodeType {
     description: INodeTypeDescription = {
@@ -38,6 +43,12 @@ export class Playwright implements INodeType {
                         action: 'Click on an element',
                     },
                     {
+                        name: 'Close Session',
+                        value: 'closeSession',
+                        description: 'Close the current browser session',
+                        action: 'Close the current browser session',
+                    },
+                    {
                         name: 'Fill Form',
                         value: 'fillForm',
                         description: 'Fill a form field',
@@ -64,8 +75,8 @@ export class Playwright implements INodeType {
                     {
                         name: 'Take Screenshot',
                         value: 'takeScreenshot',
-                        description: 'Take a screenshot of a webpage',
-                        action: 'Take a screenshot of a webpage',
+                        description: 'Take a screenshot of the current page',
+                        action: 'Take a screenshot of the current page',
                     },
                 ],
                 default: 'navigate',
@@ -80,10 +91,38 @@ export class Playwright implements INodeType {
                 description: 'The URL to navigate to',
                 displayOptions: {
                     show: {
-                        operation: ['navigate', 'takeScreenshot', 'getText', 'clickElement', 'fillForm'],
+                        operation: ['navigate'],
                     },
                 },
                 required: true,
+            },
+
+            {
+                displayName: 'Session ID',
+                name: 'sessionId',
+                type: 'string',
+                default: '',
+                placeholder: 'optional-shared-session',
+                description:
+                    'Optional custom session ID. Leave empty to auto-share one session per workflow execution and item index.',
+                displayOptions: {
+                    hide: {
+                        operation: ['closeSession'],
+                    },
+                },
+            },
+
+            {
+                displayName: 'Leave Session Open',
+                name: 'leaveSessionOpen',
+                type: 'boolean',
+                default: true,
+                description: 'Whether to keep the browser session open for the next Playwright node',
+                displayOptions: {
+                    hide: {
+                        operation: ['closeSession'],
+                    },
+                },
             },
 
             {
@@ -95,28 +134,12 @@ export class Playwright implements INodeType {
                     editorLanguage: 'javaScript',
                 },
                 required: true,
-                default: `// Navigate to a URL
-await $page.goto('https://example.com');
+                default: `const title = await $page.title();
 
-// Get page title
-const title = await $page.title();
-console.log('Page title:', title);
-
-// Take a screenshot
-const screenshot = await $page.screenshot({ type: 'png' });
-
-// Return results
 return [{
-    json: { 
+    json: {
         title,
         url: $page.url()
-    },
-    binary: {
-        screenshot: await $helpers.prepareBinaryData(
-            Buffer.from(screenshot),
-            'screenshot.png',
-            'image/png'
-        )
     }
 }];`,
                 description:
@@ -232,10 +255,15 @@ return [{
                 displayName: 'Browserless Endpoint',
                 name: 'browserlessEndpoint',
                 type: 'string',
-                default: 'http://browserless:3000?token=test-token',
-                placeholder: 'http://browserless:3000?token=test-token',
+                default: 'http://browserless:3000',
+                placeholder: 'http://browserless:3000',
                 required: true,
-                description: 'Browserless CDP endpoint',
+                description: 'Browserless CDP endpoint used when a new session is created',
+                displayOptions: {
+                    hide: {
+                        operation: ['closeSession'],
+                    },
+                },
             },
 
             {
@@ -244,6 +272,11 @@ return [{
                 type: 'collection',
                 placeholder: 'Add Option',
                 default: {},
+                displayOptions: {
+                    hide: {
+                        operation: ['closeSession'],
+                    },
+                },
                 options: [
                     {
                         displayName: 'Timeout',
@@ -289,55 +322,77 @@ return [{
     async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
         const items = this.getInputData();
         const returnData: INodeExecutionData[] = [];
+        const executionId = (this as ExecutionFunctionsWithExecutionId).getExecutionId?.();
+        const workflowId = this.getWorkflow().id;
 
         for (let i = 0; i < items.length; i++) {
             const operation = this.getNodeParameter('operation', i) as string;
-            const browserlessEndpoint = this.getNodeParameter('browserlessEndpoint', i) as string;
-            const browserOptions = this.getNodeParameter('browserOptions', i) as IBrowserOptions;
+            const sessionId = this.getNodeParameter('sessionId', i, '') as string;
+            const sessionKey = getSessionKey(workflowId, executionId, i, sessionId);
 
             try {
+                if (operation === 'closeSession') {
+                    const closed = await closeSession(sessionKey);
+
+                    returnData.push({
+                        json: {
+                            success: closed,
+                            sessionKey,
+                            message: closed ? 'Session closed' : 'No session found',
+                        },
+                        pairedItem: {
+                            item: i,
+                        },
+                    });
+
+                    continue;
+                }
+
+                const leaveSessionOpen = this.getNodeParameter('leaveSessionOpen', i, true) as boolean;
+                const browserlessEndpoint = this.getNodeParameter('browserlessEndpoint', i) as string;
+                const browserOptions = this.getNodeParameter('browserOptions', i) as IBrowserOptions;
                 const playwright = require('playwright-core');
 
                 if (!browserlessEndpoint) {
-                    throw new NodeOperationError(
-                        this.getNode(),
-                        'Browserless endpoint is required',
-                        { itemIndex: i },
-                    );
+                    throw new NodeOperationError(this.getNode(), 'Browserless endpoint is required', {
+                        itemIndex: i,
+                    });
                 }
 
-                console.log(`Connecting to Browserless via CDP: ${browserlessEndpoint}`);
+                const session = await getOrCreateSession(
+                    playwright,
+                    sessionKey,
+                    browserlessEndpoint,
+                    browserOptions.timeout || 30000,
+                );
 
-                const browser = await playwright.chromium.connectOverCDP(browserlessEndpoint, {
-                    timeout: browserOptions.timeout || 30000,
-                });
+                if (operation === 'navigate') {
+                    const url = this.getNodeParameter('url', i) as string;
+                    await session.page.goto(url);
+                }
 
-                const context = browser.contexts()[0] || (await browser.newContext());
-                const page = await context.newPage();
-
-                let result;
+                let result: INodeExecutionData | INodeExecutionData[];
 
                 if (operation === 'runCustomScript') {
-                    console.log(`Processing ${i + 1} of ${items.length}: [runCustomScript] Custom Script`);
-                    result = await runCustomScript(this, i, browser, page, playwright);
-                    await browser.close();
+                    result = await runCustomScript(this, i, session.browser, session.page, playwright);
                     returnData.push(...result);
                 } else {
-                    const url = this.getNodeParameter('url', i) as string;
-                    await page.goto(url);
-
-                    result = await handleOperation(operation, page, this, i);
-                    await browser.close();
+                    result = await handleOperation(operation, session.page, this, i);
                     returnData.push(result);
                 }
-            } catch (error: any) {
-                console.error('Browser connection error:', error);
 
+                if (!leaveSessionOpen) {
+                    await closeSession(sessionKey);
+                }
+            } catch (error: any) {
                 if (this.continueOnFail()) {
                     returnData.push({
                         json: {
                             error: error.message,
-                            endpoint: browserlessEndpoint,
+                            sessionKey,
+                        },
+                        pairedItem: {
+                            item: i,
                         },
                     });
                     continue;

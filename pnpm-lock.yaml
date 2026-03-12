@@ -15,8 +15,8 @@ importers:
         specifier: ^11.2.0
         version: 11.2.0
       playwright-core:
-        specifier: 1.49.0
-        version: 1.49.0
+        specifier: 1.58.2
+        version: 1.58.2
     devDependencies:
       '@types/fs-extra':
         specifier: ^11.0.4
@@ -1558,8 +1558,8 @@ packages:
     resolution: {integrity: sha512-MnUuEycAemtSaeFSjXKW/aroV7akBbY+Sv+RkyqFjgAe73F+MR0TBWKBRDkmfWq/HiFmdavfZ1G7h4SPZXaCSg==}
     engines: {node: '>=0.10.0'}
 
-  playwright-core@1.49.0:
-    resolution: {integrity: sha512-R+3KKTQF3npy5GTiKH/T+kdhoJfJojjHESR1YEWhYuEKRVfVaxH3+4+GvXE5xyCngCxhxnykk0Vlah9v8fs3jA==}
+  playwright-core@1.58.2:
+    resolution: {integrity: sha512-yZkEtftgwS8CsfYo7nm0KE8jsvm6i/PTgVtB8DL726wNf6H2IMsDuxCpJj59KDaxCtSnrWan2AeDqM7JBaultg==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -3859,7 +3859,7 @@ snapshots:
 
   pinkie@2.0.4: {}
 
-  playwright-core@1.49.0: {}
+  playwright-core@1.58.2: {}
 
   pluralize@8.0.0: {}
 

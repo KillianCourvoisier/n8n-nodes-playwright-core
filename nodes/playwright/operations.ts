@@ -1,128 +1,142 @@
-import { IExecuteFunctions } from 'n8n-workflow';
+import { IExecuteFunctions, INodeExecutionData, NodeOperationError } from 'n8n-workflow';
 import { Page } from 'playwright-core';
 
 export async function handleOperation(
     operation: string,
     page: Page,
     executeFunctions: IExecuteFunctions,
-    itemIndex: number
-): Promise<any> {
+    itemIndex: number,
+): Promise<INodeExecutionData> {
     switch (operation) {
-        case 'navigate':
+        case 'navigate': {
             const content = await page.content();
             const url = page.url();
+
             return {
                 json: {
-                    content: content,
-                    url: url
+                    content,
+                    url,
                 },
                 pairedItem: {
-                    item: itemIndex
-                }
+                    item: itemIndex,
+                },
             };
+        }
 
-        case 'takeScreenshot':
+        case 'takeScreenshot': {
             const screenshotOptions = executeFunctions.getNodeParameter('screenshotOptions', itemIndex);
-            const dataPropertyName = executeFunctions.getNodeParameter('dataPropertyName', itemIndex) || 'screenshot';
-            const screenshot = await page.screenshot(screenshotOptions as any);
+            const dataPropertyName =
+                (executeFunctions.getNodeParameter('dataPropertyName', itemIndex) as string) || 'screenshot';
+            const screenshot = await page.screenshot(screenshotOptions as Parameters<Page['screenshot']>[0]);
 
-            // Prepare binary data using n8n's helper
             const binaryData = await executeFunctions.helpers.prepareBinaryData(
                 Buffer.from(screenshot),
                 (screenshotOptions as { path?: string }).path || dataPropertyName,
-                'image/png'
+                'image/png',
             );
 
             return {
                 binary: {
-                    [dataPropertyName]: binaryData
+                    [dataPropertyName]: binaryData,
                 },
                 json: {
                     success: true,
-                    url: page.url()
+                    url: page.url(),
                 },
                 pairedItem: {
-                    item: itemIndex
-                }
+                    item: itemIndex,
+                },
             };
+        }
 
-        case 'getText':
+        case 'getText': {
             const selectorType = executeFunctions.getNodeParameter('selectorType', itemIndex) as string;
-            const textSelector = selectorType === 'css' 
-                ? executeFunctions.getNodeParameter('selector', itemIndex) as string
-                : executeFunctions.getNodeParameter('xpath', itemIndex) as string;
-            
-            let textElement;
-            if (selectorType === 'css') {
-                textElement = await page.$(textSelector);
-            } else {
-                textElement = await page.locator(`xpath=${textSelector}`).first();
-            }
-            
-            const text = selectorType === 'css' 
-                ? await textElement?.textContent()
-                : await textElement?.textContent();
-            
+            const textSelector =
+                selectorType === 'css'
+                    ? (executeFunctions.getNodeParameter('selector', itemIndex) as string)
+                    : (executeFunctions.getNodeParameter('xpath', itemIndex) as string);
+
+            const locator =
+                selectorType === 'css'
+                    ? page.locator(textSelector).first()
+                    : page.locator(`xpath=${textSelector}`).first();
+
+            const text = await locator.textContent();
+
             return {
                 json: {
                     text,
                     selectorType,
-                    selector: textSelector
+                    selector: textSelector,
+                    url: page.url(),
                 },
                 pairedItem: {
-                    item: itemIndex
-                }
+                    item: itemIndex,
+                },
             };
+        }
 
-        case 'clickElement':
+        case 'clickElement': {
             const clickSelectorType = executeFunctions.getNodeParameter('selectorType', itemIndex) as string;
-            const clickSelector = clickSelectorType === 'css'
-                ? executeFunctions.getNodeParameter('selector', itemIndex) as string
-                : executeFunctions.getNodeParameter('xpath', itemIndex) as string;
-            
-            if (clickSelectorType === 'css') {
-                await page.click(clickSelector);
-            } else {
-                await page.locator(`xpath=${clickSelector}`).click();
-            }
-            
+            const clickSelector =
+                clickSelectorType === 'css'
+                    ? (executeFunctions.getNodeParameter('selector', itemIndex) as string)
+                    : (executeFunctions.getNodeParameter('xpath', itemIndex) as string);
+
+            const locator =
+                clickSelectorType === 'css'
+                    ? page.locator(clickSelector).first()
+                    : page.locator(`xpath=${clickSelector}`).first();
+
+            await locator.click();
+
             return {
                 json: {
                     success: true,
                     selectorType: clickSelectorType,
-                    selector: clickSelector
+                    selector: clickSelector,
+                    url: page.url(),
                 },
                 pairedItem: {
-                    item: itemIndex
-                }
+                    item: itemIndex,
+                },
             };
+        }
 
-        case 'fillForm':
+        case 'fillForm': {
             const formSelectorType = executeFunctions.getNodeParameter('selectorType', itemIndex) as string;
-            const formSelector = formSelectorType === 'css'
-                ? executeFunctions.getNodeParameter('selector', itemIndex) as string
-                : executeFunctions.getNodeParameter('xpath', itemIndex) as string;
+            const formSelector =
+                formSelectorType === 'css'
+                    ? (executeFunctions.getNodeParameter('selector', itemIndex) as string)
+                    : (executeFunctions.getNodeParameter('xpath', itemIndex) as string);
             const value = executeFunctions.getNodeParameter('value', itemIndex) as string;
-            
-            if (formSelectorType === 'css') {
-                await page.fill(formSelector, value);
-            } else {
-                await page.locator(`xpath=${formSelector}`).fill(value);
-            }
-            
+
+            const locator =
+                formSelectorType === 'css'
+                    ? page.locator(formSelector).first()
+                    : page.locator(`xpath=${formSelector}`).first();
+
+            await locator.fill(value);
+
             return {
                 json: {
                     success: true,
                     selectorType: formSelectorType,
                     selector: formSelector,
-                    value
+                    value,
+                    url: page.url(),
                 },
                 pairedItem: {
-                    item: itemIndex
-                }
+                    item: itemIndex,
+                },
             };
+        }
 
         default:
-            throw new Error(`Unknown operation: ${operation}`);
+            throw new NodeOperationError(
+                executeFunctions.getNode(),
+                `Unknown operation: ${operation}`,
+                { itemIndex },
+            );
     }
 }
