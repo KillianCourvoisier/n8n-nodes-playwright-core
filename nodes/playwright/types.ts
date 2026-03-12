@@ -6,3 +6,9 @@ export interface IScreenshotOptions {
     fullPage?: boolean;
     path?: string;
 }
+
+export interface IDownloadOptions {
+    clickTimeout?: number;
+    waitTimeout?: number;
+    preferPopupPage?: boolean;
+}

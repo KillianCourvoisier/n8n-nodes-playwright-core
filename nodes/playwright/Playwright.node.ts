@@ -49,6 +49,12 @@ export class Playwright implements INodeType {
                         action: 'Close the current browser session',
                     },
                     {
+                        name: 'Download File',
+                        value: 'downloadFile',
+                        description: 'Click an element and capture the downloaded file or opened document',
+                        action: 'Download a file',
+                    },
+                    {
                         name: 'Fill Form',
                         value: 'fillForm',
                         description: 'Fill a form field',
@@ -199,7 +205,7 @@ return [{
                 description: 'Choose between CSS selector or XPath',
                 displayOptions: {
                     show: {
-                        operation: ['getText', 'clickElement', 'fillForm'],
+                        operation: ['getText', 'clickElement', 'fillForm', 'downloadFile'],
                     },
                 },
             },
@@ -213,7 +219,7 @@ return [{
                 description: 'CSS selector for the element (e.g., #ID, .class, button[type="submit"])',
                 displayOptions: {
                     show: {
-                        operation: ['getText', 'clickElement', 'fillForm'],
+                        operation: ['getText', 'clickElement', 'fillForm', 'downloadFile'],
                         selectorType: ['css'],
                     },
                 },
@@ -230,7 +236,7 @@ return [{
                     'XPath expression for the element (e.g., //div[@class="content"], //button[text()="Click Me"])',
                 displayOptions: {
                     show: {
-                        operation: ['getText', 'clickElement', 'fillForm'],
+                        operation: ['getText', 'clickElement', 'fillForm', 'downloadFile'],
                         selectorType: ['xpath'],
                     },
                 },
@@ -249,6 +255,56 @@ return [{
                     },
                 },
                 required: true,
+            },
+
+            {
+                displayName: 'Download Property Name',
+                name: 'downloadPropertyName',
+                type: 'string',
+                default: 'data',
+                required: true,
+                description: 'Name of the binary property in which to store the downloaded file',
+                displayOptions: {
+                    show: {
+                        operation: ['downloadFile'],
+                    },
+                },
+            },
+
+            {
+                displayName: 'Download Options',
+                name: 'downloadOptions',
+                type: 'collection',
+                placeholder: 'Add Option',
+                default: {},
+                displayOptions: {
+                    show: {
+                        operation: ['downloadFile'],
+                    },
+                },
+                options: [
+                    {
+                        displayName: 'Click Timeout',
+                        name: 'clickTimeout',
+                        type: 'number',
+                        default: 15000,
+                        description: 'Maximum time to wait for the click action in milliseconds',
+                    },
+                    {
+                        displayName: 'Wait Timeout',
+                        name: 'waitTimeout',
+                        type: 'number',
+                        default: 15000,
+                        description: 'Maximum time to wait for a download, popup, or navigation in milliseconds',
+                    },
+                    {
+                        displayName: 'Prefer Popup Page',
+                        name: 'preferPopupPage',
+                        type: 'boolean',
+                        default: true,
+                        description: 'Whether to prioritize a newly opened page when both popup and navigation are possible',
+                    },
+                ],
             },
 
             {
