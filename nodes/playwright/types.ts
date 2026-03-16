@@ -12,3 +12,5 @@ export interface IDownloadOptions {
     waitTimeout?: number;
     preferPopupPage?: boolean;
 }
+
+export type DownloadSource = 'element' | 'url';

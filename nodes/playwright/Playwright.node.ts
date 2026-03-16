@@ -51,7 +51,7 @@ export class Playwright implements INodeType {
                     {
                         name: 'Download File',
                         value: 'downloadFile',
-                        description: 'Click an element and capture the downloaded file or opened document',
+                        description: 'Click an element or fetch a direct URL and capture the file',
                         action: 'Download a file',
                     },
                     {
@@ -186,6 +186,31 @@ return [{
             },
 
             {
+                displayName: 'Download Source',
+                name: 'downloadSource',
+                type: 'options',
+                options: [
+                    {
+                        name: 'Element',
+                        value: 'element',
+                        description: 'Click an element and capture the downloaded file',
+                    },
+                    {
+                        name: 'URL',
+                        value: 'url',
+                        description: 'Fetch a file directly from a URL',
+                    },
+                ],
+                default: 'element',
+                description: 'Choose whether to download from a page element or a direct URL',
+                displayOptions: {
+                    show: {
+                        operation: ['downloadFile'],
+                    },
+                },
+            },
+
+            {
                 displayName: 'Selector Type',
                 name: 'selectorType',
                 type: 'options',
@@ -207,6 +232,9 @@ return [{
                     show: {
                         operation: ['getText', 'clickElement', 'fillForm', 'downloadFile'],
                     },
+                    hide: {
+                        downloadSource: ['url'],
+                    },
                 },
             },
 
@@ -221,6 +249,9 @@ return [{
                     show: {
                         operation: ['getText', 'clickElement', 'fillForm', 'downloadFile'],
                         selectorType: ['css'],
+                    },
+                    hide: {
+                        downloadSource: ['url'],
                     },
                 },
                 required: true,
@@ -239,8 +270,42 @@ return [{
                         operation: ['getText', 'clickElement', 'fillForm', 'downloadFile'],
                         selectorType: ['xpath'],
                     },
+                    hide: {
+                        downloadSource: ['url'],
+                    },
                 },
                 required: true,
+            },
+
+            {
+                displayName: 'Download URL',
+                name: 'downloadUrl',
+                type: 'string',
+                default: '',
+                placeholder: 'https://example.com/file.pdf',
+                description: 'The direct URL of the file to download',
+                displayOptions: {
+                    show: {
+                        operation: ['downloadFile'],
+                        downloadSource: ['url'],
+                    },
+                },
+                required: true,
+            },
+
+            {
+                displayName: 'File Name',
+                name: 'downloadFileName',
+                type: 'string',
+                default: '',
+                placeholder: 'document.pdf',
+                description: 'Optional file name override for the downloaded file',
+                displayOptions: {
+                    show: {
+                        operation: ['downloadFile'],
+                        downloadSource: ['url'],
+                    },
+                },
             },
 
             {
@@ -280,6 +345,7 @@ return [{
                 displayOptions: {
                     show: {
                         operation: ['downloadFile'],
+                        downloadSource: ['element'],
                     },
                 },
                 options: [
