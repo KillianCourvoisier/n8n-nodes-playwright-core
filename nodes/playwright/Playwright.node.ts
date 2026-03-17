@@ -57,8 +57,8 @@ export class Playwright implements INodeType {
                     {
                         name: 'Fill Form',
                         value: 'fillForm',
-                        description: 'Fill a form field',
-                        action: 'Fill a form field',
+                        description: 'Fill one or more form fields',
+                        action: 'Fill one or more form fields',
                     },
                     {
                         name: 'Get Text',
@@ -230,7 +230,7 @@ return [{
                 description: 'Choose between CSS selector or XPath',
                 displayOptions: {
                     show: {
-                        operation: ['getText', 'clickElement', 'fillForm', 'downloadFile'],
+                        operation: ['getText', 'clickElement', 'downloadFile'],
                     },
                     hide: {
                         downloadSource: ['url'],
@@ -247,7 +247,7 @@ return [{
                 description: 'CSS selector for the element (e.g., #ID, .class, button[type="submit"])',
                 displayOptions: {
                     show: {
-                        operation: ['getText', 'clickElement', 'fillForm', 'downloadFile'],
+                        operation: ['getText', 'clickElement', 'downloadFile'],
                         selectorType: ['css'],
                     },
                     hide: {
@@ -267,7 +267,7 @@ return [{
                     'XPath expression for the element (e.g., //div[@class="content"], //button[text()="Click Me"])',
                 displayOptions: {
                     show: {
-                        operation: ['getText', 'clickElement', 'fillForm', 'downloadFile'],
+                        operation: ['getText', 'clickElement', 'downloadFile'],
                         selectorType: ['xpath'],
                     },
                     hide: {
@@ -275,6 +275,48 @@ return [{
                     },
                 },
                 required: true,
+            },
+
+            {
+                displayName: 'Fields',
+                name: 'fillFields',
+                type: 'fixedCollection',
+                typeOptions: {
+                    multipleValues: true,
+                },
+                default: {},
+                placeholder: 'Add Field',
+                description: 'Form fields to fill. XPath is detected automatically if the selector starts with / or (.',
+                displayOptions: {
+                    show: {
+                        operation: ['fillForm'],
+                    },
+                },
+                options: [
+                    {
+                        displayName: 'Field',
+                        name: 'fields',
+                        values: [
+                            {
+                                displayName: 'Selector',
+                                name: 'selector',
+                                type: 'string',
+                                default: '',
+                                placeholder: '#username or //input[@ID="username"]',
+                                description: 'CSS selector or XPath expression',
+                                required: true,
+                            },
+                            {
+                                displayName: 'Value',
+                                name: 'value',
+                                type: 'string',
+                                default: '',
+                                description: 'Value to fill in the selected field',
+                                required: true,
+                            },
+                        ],
+                    },
+                ],
             },
 
             {
@@ -306,20 +348,6 @@ return [{
                         downloadSource: ['url'],
                     },
                 },
-            },
-
-            {
-                displayName: 'Value',
-                name: 'value',
-                type: 'string',
-                default: '',
-                description: 'Value to fill in the form field',
-                displayOptions: {
-                    show: {
-                        operation: ['fillForm'],
-                    },
-                },
-                required: true,
             },
 
             {

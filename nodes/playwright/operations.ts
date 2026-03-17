@@ -14,6 +14,20 @@ function getActionLocator(executeFunctions: IExecuteFunctions, itemIndex: number
     return { selectorType, selector, locator };
 }
 
+function inferSelectorType(selector: string): 'css' | 'xpath' {
+    const trimmedSelector = selector.trim();
+
+    return trimmedSelector.startsWith('/') || trimmedSelector.startsWith('(') ? 'xpath' : 'css';
+}
+
+function getLocatorFromSelector(page: Page, selector: string) {
+    const selectorType = inferSelectorType(selector);
+    const locator =
+        selectorType === 'css' ? page.locator(selector).first() : page.locator(`xpath=${selector}`).first();
+
+    return { selectorType, selector, locator };
+}
+
 async function safely<T>(promise: Promise<T>): Promise<T | null> {
     try {
         return await promise;
@@ -673,17 +687,48 @@ export async function handleOperation(
         }
 
         case 'fillForm': {
-            const { selectorType, selector, locator } = getActionLocator(executeFunctions, itemIndex, page);
-            const value = executeFunctions.getNodeParameter('value', itemIndex) as string;
+            const fillFields = executeFunctions.getNodeParameter('fillFields', itemIndex, {}) as {
+                fields?: Array<{
+                    selector: string;
+                    value: string;
+                }>;
+            };
 
-            await locator.fill(value);
+            const fields = (fillFields.fields || []).filter((field) => field.selector?.trim());
+
+            if (fields.length === 0) {
+                throw new NodeOperationError(
+                    executeFunctions.getNode(),
+                    'At least one form field is required',
+                    { itemIndex },
+                );
+            }
+
+            const filledFields: Array<{
+                selectorType: 'css' | 'xpath';
+                selector: string;
+                value: string;
+            }> = [];
+
+            for (const field of fields) {
+                const selector = field.selector.trim();
+                const value = field.value ?? '';
+                const { selectorType, locator } = getLocatorFromSelector(page, selector);
+
+                await locator.fill(value);
+
+                filledFields.push({
+                    selectorType,
+                    selector,
+                    value,
+                });
+            }
 
             return {
                 json: {
                     success: true,
-                    selectorType,
-                    selector,
-                    value,
+                    filledFieldsCount: filledFields.length,
+                    fields: filledFields,
                     url: page.url(),
                 },
                 pairedItem: {
