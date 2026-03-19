@@ -1,5 +1,5 @@
 {
-	"name": "@ia-generative/n8n-nodes-playwright-core",
+	"name": "n8n-nodes-playwright-core",
 	"version": "0.1.0",
 	"description": "n8n community node for browser automation with Playwright Core browser agnostic",
 	"keywords": [
@@ -33,9 +33,6 @@
 		"format": "prettier nodes package.json --write",
 		"lint": "eslint nodes package.json",
 		"lintfix": "eslint nodes package.json --fix"
-	},
-	"publishConfig": {
-		"registry": "https://npm.pkg.github.com"
 	},
 	"files": [
 		"dist"
